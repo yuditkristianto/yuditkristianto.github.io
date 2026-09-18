@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  One fault, five transports, two protocols
+  A comparison of IEC 60870-5-104 / DNP3 against IEC 61850 R-GOOSE for
+  fault location, isolation and restoration on a medium voltage ring.
+
+  Copyright (c) 2026 Yudit Kristianto. All rights reserved.
+
+  Reuse, adaptation, redistribution, modification, or incorporation of this
+  work or any part of it into other material is permitted only with the prior
+  written permission of the author.
+
+  Version 1.0, September 2026.
+  ============================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="author" content="Yudit Kristianto">
+<meta name="copyright" content="Copyright (c) 2026 Yudit Kristianto. All rights reserved.">
+<meta name="description" content="IEC 60870-5-104 and DNP3 compared against IEC 61850 R-GOOSE for distribution FLISR across five transport media.">
+<title>One fault, five transports, two protocols</title>
+<style>
+  :root{--bg:#071722;--panel:#0B2233;--card:#0E2C48;--band:#15406A;--border:#24557F;
+    --teal:#1CC5C5;--teal2:#6FC7D6;--orange:#F5A623;--white:#EAF3F9;--body:#93AEC2;
+    --fault:#E8564B;--dead:#3A4E60;--ok:#4ED6A8;--dim:#15293A}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--white);padding:20px;line-height:1.5;
+    font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1280px;margin:0 auto}
+  h1{font-size:clamp(18px,2.4vw,26px);margin:0 0 4px}
+  .sub{color:var(--teal2);font-size:clamp(12px,1.4vw,15px);margin:0 0 16px}
+  .stage{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px}
+  svg{width:100%;height:auto;display:block}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+  .row .lab{font-size:10.5px;letter-spacing:.14em;color:var(--body);width:100%;margin-bottom:1px}
+  button{font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border-radius:7px;
+    padding:8px 14px;background:transparent;color:var(--teal2);border:1px solid var(--border)}
+  button[aria-pressed="true"]{background:var(--band);color:var(--white);border-color:var(--teal)}
+  button.go{background:var(--orange);color:#10202c;border:0;padding:10px 24px;font-weight:700}
+  button:hover{filter:brightness(1.12)} button:disabled{opacity:.45;cursor:default}
+  button.blocked{opacity:.45;cursor:not-allowed;text-decoration:line-through;
+    border-color:var(--dead);color:var(--dead);background:transparent}
+  button.blocked:hover{filter:none}
+  .why{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--fault);
+    border:1px solid var(--fault);border-radius:20px;padding:5px 13px;white-space:nowrap}
+  .why[hidden]{display:none}
+  input[type=range]{flex:1;min-width:190px;max-width:340px;accent-color:var(--orange)}
+  .rings{font-variant-numeric:tabular-nums;font-weight:700;color:var(--orange);min-width:104px}
+  .caveat{margin-top:12px;background:var(--card);border-left:3px solid var(--orange);
+    border-radius:0 8px 8px 0;padding:11px 15px;font-size:13.5px;color:var(--body);min-height:62px}
+  .caveat b{color:var(--white)} .caveat.bad{border-left-color:var(--fault)}
+  .caveat.bad b{color:var(--fault)}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:14px}
+  .m{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+  .m .k{font-size:10px;letter-spacing:.14em;color:var(--body)}
+  .m .v{font-size:clamp(19px,2.6vw,27px);font-weight:700;color:var(--orange);
+    font-variant-numeric:tabular-nums;line-height:1.25}
+  .m .n{font-size:11px;color:var(--body)}
+  .status{background:var(--band);border:1px solid var(--orange);border-radius:8px;
+    padding:12px 16px;min-height:64px;margin-top:12px;font-size:clamp(13px,1.5vw,15px)}
+  .status b{color:var(--orange)}
+  .note{margin-top:16px;padding-top:12px;border-top:1px solid var(--border);font-size:13px;color:var(--body)}
+  .note b{color:var(--white)} .note ul{margin:8px 0 0;padding-left:18px} .note li{margin-bottom:6px}
+  .lic{margin-top:18px;padding:13px 16px;background:var(--card);border:1px solid var(--border);
+    border-radius:8px;font-size:12.5px;color:var(--body);line-height:1.6}
+  .lic b{color:var(--white)}
+  .lic .v{display:block;margin-top:7px;font-size:11px;color:var(--dead);letter-spacing:.06em}
+  text{font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .nl{font-weight:700;fill:var(--white)} .ns{fill:var(--body)}
+  .tg{font-size:11px;font-weight:700;letter-spacing:.09em}
+  line,rect{transition:stroke .3s ease,fill .3s ease,opacity .3s ease}
+  @media (max-width:640px){body{padding:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>One fault. Five transports. Two protocols.</h1>
+  <p class="sub">Change the transport, change the protocol, stretch the ring. Watch which numbers move and which do not.</p>
+
+  <div class="stage">
+    <svg id="svg" viewBox="0 0 1200 470" role="img" aria-label="Distribution ring comparing master-slave IEC 104 traffic against R-GOOSE peer-to-peer traffic over a shared transport">
+      <rect id="mbox" x="470" y="22" width="260" height="52" rx="7"/>
+      <text id="mt1" x="600" y="44" text-anchor="middle" class="tg">SCADA / ADMS MASTER</text>
+      <text id="mt2" x="600" y="62" text-anchor="middle" class="ns" style="font-size:10.5px"></text>
+      <line id="mlink" x1="600" y1="74" x2="600" y2="112"/>
+      <rect x="30" y="112" width="1140" height="48" rx="7" fill="var(--band)" stroke="var(--teal)" stroke-width="1.5"/>
+      <text id="tbt" x="600" y="141" text-anchor="middle" class="tg" fill="var(--teal2)"></text>
+      <g id="radios" stroke="var(--teal2)" stroke-width="1.3" stroke-dasharray="4 5" opacity=".45"></g>
+      <g id="ring"></g><g id="ders"></g><g id="pk"></g>
+      <text x="1170" y="463" text-anchor="end" class="ns" style="font-size:10.5px;opacity:.75">
+        &#169; 2026 Yudit Kristianto
+      </text>
+    </svg>
+  </div>
+
+  <div class="row"><span class="lab">TRANSPORT</span>
+    <button data-m="fibre" aria-pressed="false">Fibre, MPLS-TP</button>
+    <button data-m="p5g" aria-pressed="true">Private 5G</button>
+    <button data-m="mw" aria-pressed="false">Microwave</button>
+    <button data-m="sat" aria-pressed="false">Satellite</button>
+    <button data-m="nb" aria-pressed="false">NB-IoT</button>
+  </div>
+  <div class="caveat" id="cav"></div>
+
+  <div class="row"><span class="lab">PROTOCOL</span>
+    <button id="p104" aria-pressed="false">IEC 60870-5-104 / DNP3</button>
+    <button id="pgo" aria-pressed="true">IEC 61850 R-GOOSE</button>
+    <span class="why" id="why" hidden>Not possible on this bearer &mdash; no multicast</span>
+  </div>
+
+  <div class="row"><span class="lab">SELF-HEALING SCHEME</span>
+    <button id="sst" aria-pressed="true">Static</button>
+    <button id="sdy" aria-pressed="false">Dynamic, capacity aware</button>
+  </div>
+  <div class="row"><span class="lab">RING SIZE</span>
+    <input type="range" id="nr" min="4" max="16" value="12" step="1">
+    <span class="rings" id="nrv">12 RMUs</span>
+    <button class="go" id="run">Run the sequence</button>
+  </div>
+
+  <div class="metrics">
+    <div class="m"><div class="k">TIME TO RESTORE</div><div class="v" id="mT">&mdash;</div>
+      <div class="n" id="mTn">fault to supply back on</div></div>
+    <div class="m"><div class="k">MESSAGES ON THE WIRE</div><div class="v" id="mM">&mdash;</div>
+      <div class="n" id="mMn">&nbsp;</div></div>
+    <div class="m"><div class="k">MUST ALL ANSWER FIRST</div><div class="v" id="mD" style="font-size:21px">&mdash;</div>
+      <div class="n" id="mDn">&nbsp;</div></div>
+  </div>
+
+  <div class="status" id="st">Pick a transport, pick a protocol, then run it.</div>
+
+  <div class="note">
+    <b>How this is modelled, and what it does not claim.</b>
+    <ul>
+      <li><b>104 and DNP3 are master-slave.</b> Field devices never talk to each other. Every indication travels up
+        to the master, the master decides, and each switching step needs select, confirm, operate, confirm, one
+        step after another. The master cannot act until the last indication lands, and on a narrow bearer those
+        indications queue behind each other.</li>
+      <li><b>R-GOOSE publishes once to everyone.</b> Each node adds what it heard to what it measured and works its
+        own switch. No master is in the loop and both isolating switches move together.</li>
+      <li><b>Ring size moves less than you would expect on a fast link.</b> A single event operates four switches
+        whatever the ring length, and switch travel swamps everything else. Stretch the ring on fibre or 5G and
+        the clock hardly notices. Stretch it on satellite or NB-IoT and the queue of indications starts to hurt.
+        The number that really grows is how many devices have to be healthy and reachable before the master will
+        do anything at all.</li>
+      <li><b>Static against dynamic.</b> Static self-healing locates the fault, isolates it and reconfigures on
+        topology alone. Dynamic self-healing asks first whether the source taking the load can actually carry it.
+        A polled master cannot answer that from its scan data, because the loading changed the moment the breaker
+        opened, so it has to go and read every device again. Publish and subscribe carries the loading in the same
+        dataset as the status, timestamped and quality flagged, so the check costs no messages.</li>
+      <li><b>One-way figures used here:</b> fibre 2&nbsp;ms, private 5G 10&nbsp;ms, microwave 4&nbsp;ms,
+        geostationary satellite 250&nbsp;ms, NB-IoT 5&nbsp;s. Switch travel is held at 2&nbsp;s throughout,
+        because no protocol makes a switch move faster.</li>
+    </ul>
+  </div>
+
+  <div class="lic">
+    <b>&#169; 2026 Yudit Kristianto. All rights reserved.</b><br>
+    Reuse, adaptation, redistribution, modification, or incorporation of this work or any part of it into
+    other material is permitted only with the prior written permission of the author.
+    <span class="v">VERSION 1.0 &nbsp;&middot;&nbsp; SEPTEMBER 2026</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  var NS="http://www.w3.org/2000/svg",$=function(i){return document.getElementById(i)};
+  var ring=$('ring'),ders=$('ders'),radios=$('radios'),pk=$('pk'),st=$('st');
+  var NY=252,NH=70,LY=NY+NH/2,TB=160,TMID=136,SW=2000,GUARD=1000;
+
+  var MEDIA={
+    fibre:{n:'FIBRE, MPLS-TP',l:2,tx:4,d:'2 ms one way',ok:true,
+      c:'<b>The safest answer, if the budget survives it.</b> Lowest latency and full control, but every site has '+
+        'to be reached by fibre and every site has to carry a proper MPLS-TP configuration. Miss one and those '+
+        'messages never find each other. That means trenching out to each generator and MPLS-TP capable equipment '+
+        'sitting there too, which costs a good deal more than the Layer 3 switch you were hoping to use.'},
+    p5g:{n:'PRIVATE 5G, LOW-LATENCY SLICE',l:10,tx:10,d:'10 ms one way',ok:true,
+      c:'<b>Bounded latency without the trench.</b> A slice keeps protection traffic away from everything else and '+
+        'you own the core, so the guarantee is yours rather than a carrier\u2019s. Coverage still has to be '+
+        'engineered site by site, and a best-effort connection would not do.'},
+    mw:{n:'LICENSED MICROWAVE',l:4,tx:6,d:'4 ms one way',ok:true,
+      c:'<b>Fast, but it has to see where it is going.</b> Every link is point to point and needs clear line of '+
+        'sight between towers. Across generation scattered over broken ground that is often simply not achievable, '+
+        'and each ridge or building in the way means another tower or another route. Good as backhaul between '+
+        'known fixed points, awkward as the way you reach a hundred small sites.'},
+    sat:{n:'GEOSTATIONARY SATELLITE',l:250,tx:60,d:'250 ms one way',ok:true,
+      c:'<b>A quarter of a second each way is physics, not engineering.</b> The signal climbs roughly 36,000 km '+
+        'and comes back down, and no amount of money changes that. Each site also needs an unobstructed view of '+
+        'the sky, which terrain, buildings and mountainsides do not always allow. Sensible as a last-resort backup '+
+        'for a remote site, not as a path anything time-critical depends on.'},
+    nb:{n:'NB-IoT',l:5000,tx:2000,d:'seconds, by design',ok:false,pp:false,
+      c:'<b>R-GOOSE cannot run here at all.</b> Publish and subscribe needs multicast and NB-IoT has none to '+
+        'offer, so there is nothing for the protocol to sit on. This is not a speed problem you could engineer '+
+        'around. Set that aside and the rest still rules it out: latency in seconds by design, tiny payloads, a '+
+        'link that leans heavily towards uplink, and power saving modes that leave devices asleep and unreachable '+
+        'for minutes. A polled protocol will technically work here, which is not the same as it being a good idea. '+
+        'Read your meters with it and keep it away from anything that trips.'}
+  };
+
+  var media='p5g',proto='goose',scheme='static',N=12,running=false,timers=[],msgs=0,
+      nodes=[],by={},sg={},fault=null;
+  var LOAD_A=58, LOAD_B=64;
+
+  function el(t,a){var e=document.createElementNS(NS,t);for(var k in a)e.setAttribute(k,a[k]);return e;}
+
+  function layout(n){
+    var m=Math.ceil(n/2);
+    var P=Math.max(96,160-n*4.2), NOPW=Math.max(50,88-n*2.2), G=Math.max(7,46-n*2.6);
+    var R=(1140-2*P-NOPW-(n+2)*G)/n;
+    var list=[{id:'PA',w:P,label:'PRIMARY A',prim:true}];
+    for(var i=1;i<=m;i++) list.push({id:'R'+i,w:R,label:R>=88?('RMU '+i):String(i),idx:i});
+    list.push({id:'NOP',w:NOPW,label:'NOP',nop:true});
+    for(var j=m+1;j<=n;j++) list.push({id:'R'+j,w:R,label:R>=88?('RMU '+j):String(j),idx:j});
+    list.push({id:'PB',w:P,label:'PRIMARY B',prim:true});
+    list.m=m;
+    var x=30;
+    list.forEach(function(o){o.x=x;o.cx=x+o.w/2;x+=o.w+G;});
+    return {list:list,R:R,m:m};
+  }
+
+  function buildRing(){
+    ring.textContent='';ders.textContent='';radios.textContent='';pk.textContent='';
+    var lo=layout(N); nodes=lo.list; by={}; sg={};
+    var fs=Math.max(8.5,Math.min(14,lo.R/7.5));
+    nodes.forEach(function(o){by[o.id]=o;});
+
+    for(var i=0;i<nodes.length-1;i++){
+      var a=nodes[i],b=nodes[i+1];
+      var l=el('line',{x1:a.x+a.w,y1:LY,x2:b.x,y2:LY,stroke:'var(--teal)','stroke-width':4.5});
+      sg[a.id+'-'+b.id]=l; ring.appendChild(l);
+    }
+    nodes.forEach(function(o){
+      radios.appendChild(el('line',{x1:o.cx,y1:TB,x2:o.cx,y2:NY}));
+      var r=el('rect',{x:o.x,y:NY,width:o.w,height:NH,rx:5,fill:'var(--card)',
+        stroke:'var(--border)','stroke-width':1.4});
+      if(o.nop) r.setAttribute('stroke-dasharray','5 4');
+      o.rect=r; ring.appendChild(r);
+      var t=el('text',{x:o.cx,y:NY+(lo.R>=88||o.prim?27:40),'text-anchor':'middle','class':'nl',
+        style:'font-size:'+(o.prim?13:fs)+'px'});
+      t.textContent=o.label; ring.appendChild(t);
+      var s=el('text',{x:o.cx,y:NY+50,'text-anchor':'middle','class':'ns',
+        style:'font-size:'+Math.min(10.5,fs-1)+'px'});
+      o.sub=s; ring.appendChild(s);
+      if(o.prim){
+        var cap=el('text',{x:o.cx,y:NY+NH+20,'text-anchor':'middle','class':'ns',
+          style:'font-size:10.5px;font-weight:700'});
+        o.cap=cap; ring.appendChild(cap);
+      }
+    });
+
+    var m=lo.m, k=Math.max(1,Math.min(m-1,Math.round(m*0.5)));
+    window.__k=k; window.__m=m;
+    var a=by['R'+k],b=by['R'+(k+1)];
+    var fx=(a.x+a.w+b.x)/2;
+    fault=el('g',{opacity:0});
+    fault.appendChild(el('circle',{cx:fx,cy:LY,r:11,fill:'var(--fault)'}));
+    var ft=el('text',{x:fx,y:LY+30,'text-anchor':'middle','class':'tg',fill:'var(--fault)',
+      style:'font-size:10px'});
+    ft.textContent='FAULT'; fault.appendChild(ft); ring.appendChild(fault);
+
+    var want=[['SOLAR FARM',1],['WIND FARM',Math.max(2,Math.round(N*0.35))],
+              ['BATTERY STORAGE',Math.max(3,Math.round(N*0.68))],['INDUSTRIAL GEN',N]];
+    var seen={}, dp=[];
+    want.forEach(function(d){ if(by['R'+d[1]]&&!seen[d[1]]){seen[d[1]]=1;dp.push(d);} });
+    var c=dp.length, slot=1140/c, w=Math.min(178,slot-16);
+    dp.forEach(function(d,ix){
+      var o=by['R'+d[1]];
+      var x=30+ix*slot+(slot-w)/2, y=384;
+      ders.appendChild(el('line',{x1:o.cx,y1:NY+NH,x2:x+w/2,y2:y,stroke:'var(--border)','stroke-width':1.6}));
+      ders.appendChild(el('rect',{x:x,y:y,width:w,height:54,rx:6,fill:'var(--card)',
+        stroke:'var(--orange)','stroke-width':1.4}));
+      var t=el('text',{x:x+w/2,y:y+23,'text-anchor':'middle','class':'tg',fill:'var(--orange)',
+        style:'font-size:9.5px'});
+      t.textContent=d[0]; ders.appendChild(t);
+      var s=el('text',{x:x+w/2,y:y+41,'text-anchor':'middle','class':'ns',style:'font-size:10px'});
+      ders.appendChild(s); o.dSub=s;
+    });
+    reset();
+  }
+
+  function seg(k,c,o){var e=sg[k];if(e){e.setAttribute('stroke',c);e.setAttribute('opacity',o===undefined?1:o);}}
+  function sub(id,t,f){var n=by[id];if(n&&n.sub){n.sub.textContent=t;n.sub.setAttribute('fill',f||'var(--body)');}}
+  function box(id,c){var n=by[id];if(n)n.rect.setAttribute('stroke',c);}
+  function fmt(ms){return ms>=60000?(ms/60000).toFixed(1)+' min':ms>=1000?(ms/1000).toFixed(2)+' s':Math.round(ms)+' ms';}
+
+  function fly(x0,y0,x1,y1,delay,dur,col){
+    var c=el('circle',{cx:x0,cy:y0,r:4,fill:col||'var(--orange)',opacity:0}); pk.appendChild(c);
+    timers.push(setTimeout(function(){
+      msgs++; $('mM').textContent=msgs;
+      var t0=performance.now();
+      (function f(now){var p=Math.min(1,(now-t0)/dur);
+        c.setAttribute('opacity',p<.15?p/.15:(p>.85?(1-p)/.15:1));
+        c.setAttribute('cx',x0+(x1-x0)*p);c.setAttribute('cy',y0+(y1-y0)*p);
+        if(p<1)requestAnimationFrame(f);else c.remove();})(t0);
+    },delay));
+  }
+  function at(ms,fn){timers.push(setTimeout(fn,ms));}
+  function say(h,ms){at(ms,function(){st.innerHTML=h;});}
+
+  function applyLock(){
+    var ok=MEDIA[media].pp!==false, b=$('pgo');
+    if(!ok&&proto==='goose') proto='iec104';
+    b.disabled=!ok; b.className=ok?'':'blocked';
+    b.title=ok?'':'NB-IoT has no multicast, so there is nothing for publish and subscribe to run on';
+    $('why').hidden=ok;
+    $('p104').setAttribute('aria-pressed',String(proto==='iec104'));
+    $('pgo').setAttribute('aria-pressed',String(proto==='goose'));
+  }
+
+  function paint(){
+    var is104=proto==='iec104', M=MEDIA[media];
+    $('mbox').setAttribute('fill',is104?'var(--card)':'var(--dim)');
+    $('mbox').setAttribute('stroke',is104?'var(--orange)':'var(--dead)');
+    $('mbox').setAttribute('stroke-width',1.5);
+    $('mt1').setAttribute('fill',is104?'var(--orange)':'var(--dead)');
+    $('mt2').textContent=is104?'every message passes through here':'not in the loop';
+    $('mt2').setAttribute('fill',is104?'var(--body)':'var(--dead)');
+    $('mlink').setAttribute('stroke',is104?'var(--orange)':'var(--dead)');
+    $('mlink').setAttribute('stroke-width',is104?2.5:1.4);
+    $('mlink').setAttribute('stroke-dasharray',is104?'0':'3 5');
+    $('tbt').textContent=M.n+'  \u00b7  '+M.d;
+    $('cav').innerHTML=M.c;
+    $('cav').className='caveat'+(M.ok?'':' bad');
+  }
+
+  function reset(){
+    timers.forEach(clearTimeout);timers=[];pk.textContent='';msgs=0;
+    applyLock();
+    nodes.forEach(function(o){box(o.id,'var(--border)');sub(o.id,'');});
+    sub('PA','source');sub('PB','source');sub('NOP','OPEN','var(--teal2)');
+    var dyn=scheme==='dynamic';
+    if(by['PA']&&by['PA'].cap){
+      by['PA'].cap.textContent=dyn?(LOAD_A+'% loaded'):'';
+      by['PA'].cap.setAttribute('fill','var(--body)');
+    }
+    if(by['PB']&&by['PB'].cap){
+      by['PB'].cap.textContent=dyn?(LOAD_B+'% loaded'):'';
+      by['PB'].cap.setAttribute('fill','var(--body)');
+    }
+    if(by['NOP']){by['NOP'].rect.setAttribute('stroke-dasharray','5 4');box('NOP','var(--teal2)');}
+    for(var i=0;i<nodes.length-1;i++) seg(nodes[i].id+'-'+nodes[i+1].id,'var(--teal)');
+    nodes.forEach(function(o){if(o.dSub){o.dSub.textContent='connected';o.dSub.setAttribute('fill','var(--body)');}});
+    if(fault)fault.setAttribute('opacity',0);
+    var n1=N+1, is104=proto==='iec104';
+    $('mT').innerHTML='&mdash;';$('mM').textContent='0';
+    $('mMn').textContent=is104
+      ?(n1+' indications, 16 for four commands'+(scheme==='dynamic'?(', '+2*n1+' to read loading'):''))
+      :(n1+' publishes'+(scheme==='dynamic'?', loading included':', that is all of it'));
+    $('mD').textContent=is104?(n1+' devices + master'):'2 neighbours';
+    $('mDn').textContent=is104?'lose any one and the picture is incomplete':'only the two either side of the fault';
+    st.innerHTML='Pick a transport, pick a protocol, then run it.';
+    paint();
+  }
+
+  function run(){
+    if(running)return;reset();running=true;$('run').disabled=true;
+    var M=MEDIA[media],L=M.l,TX=M.tx,is104=proto==='iec104',n1=N+1;
+    var W=600,T=0,k=window.__k,m=window.__m,up='R'+k,dn='R'+(k+1);
+    var dyn=scheme==='dynamic', EVAL=dyn?20:0;
+    var xferA=k, xferB=m-k;
+    function showCap(on){
+      if(!by['PA'].cap)return;
+      by['PA'].cap.textContent=dyn?(LOAD_A+'% \u2192 headroom for '+xferA+''):'';
+      by['PB'].cap.textContent=dyn?(LOAD_B+'% \u2192 headroom for '+xferB+''):'';
+      by['PA'].cap.setAttribute('fill',on?'var(--ok)':'var(--body)');
+      by['PB'].cap.setAttribute('fill',on?'var(--ok)':'var(--body)');
+    }
+
+    function clock(v,ms){at(ms,function(){$('mT').textContent=fmt(v);});}
+
+    at(0,function(){
+      fault.setAttribute('opacity',1); seg(up+'-'+dn,'var(--fault)');
+      for(var i=1;i<=k;i++){sub('R'+i,'saw it','var(--fault)');box('R'+i,'var(--fault)');}
+      for(var j=k+1;j<=m;j++){sub('R'+j,'dark, saw nothing');}
+      for(var z=m+1;z<=N;z++){sub('R'+z,'unaffected','var(--ok)');}
+      sub('PA','tripped','var(--fault)');box('PA','var(--fault)');
+      for(var q=0;q<=m;q++) seg(nodes[q].id+'-'+nodes[q+1].id,'var(--dead)');
+      seg(up+'-'+dn,'var(--fault)');
+    });
+    say('<b>Fault.</b> '+k+' unit'+(k>1?'s':'')+' saw the fault current pass, the rest did not. Primary A trips, '+
+        'so everything between it and the open point goes dark. The far half is still fed from Primary B.',0);
+    T+=W;
+
+    if(is104){
+      nodes.filter(function(o){return o.idx||o.id==='PA';}).forEach(function(o,i){
+        fly(o.cx,NY,600,TMID,T+i*Math.max(14,220/N),W*.55);
+      });
+      say('<b>Report up.</b> All '+n1+' devices send their indication to the master. They cannot tell each other '+
+          'anything, and on this bearer they queue behind one another.',T);
+      clock(L+n1*TX,T+W*.7); T+=W*1.2;
+
+      say('<b>Wait.</b> The master will not act on a partial picture, so it holds a settling window, then runs the algorithm.',T);
+      clock(L+n1*TX+GUARD,T+W*.5); T+=W;
+
+      if(dyn){
+        nodes.filter(function(o){return o.idx||o.prim;}).forEach(function(o,i){
+          fly(600,TMID,o.cx,NY,T+i*Math.max(10,180/N),W*.3,'var(--teal2)');
+          fly(o.cx,NY,600,TMID,T+W*.35+i*Math.max(10,180/N),W*.3,'var(--teal2)');
+        });
+        at(T+W*.6,function(){showCap(true);});
+        say('<b>Capacity check.</b> Before it moves anything the master has to know what each source is carrying. '+
+            'Its scan data is a cycle old and the loading just changed, so it goes back out and reads every '+
+            'device again. Two more passes across the bearer.',T);
+        clock(L+n1*TX+GUARD+2*(L+n1*TX)+EVAL,T+W*.9); T+=W*1.4;
+      }
+
+      [[up,'open'],[dn,'open'],['NOP','close'],['PA','reclose']].forEach(function(c,i){
+        var t=T+i*W*1.35,o=by[c[0]];
+        fly(600,TMID,o.cx,NY,t,W*.3,'var(--teal2)');
+        fly(o.cx,NY,600,TMID,t+W*.34,W*.3,'var(--teal2)');
+        fly(600,TMID,o.cx,NY,t+W*.68,W*.3);
+        fly(o.cx,NY,600,TMID,t+W*1.02,W*.3,'var(--teal2)');
+        say('<b>Command '+(i+1)+' of 4.</b> Select, confirm, operate, confirm to '+o.label+
+            ', then two seconds of switch travel. Nothing else moves until this one is finished.',t);
+        at(t+W*1.15,function(){
+          if(c[1]==='open'){sub(c[0],'OPEN','var(--orange)');box(c[0],'var(--orange)');}
+          if(c[0]==='NOP'){restoreRight();}
+          if(c[0]==='PA'){restoreLeft();}
+        });
+        clock(L+n1*TX+GUARD+(i+1)*(4*L+SW),t+W*1.15);
+      });
+      T+=4*W*1.35;
+    } else {
+      nodes.filter(function(o){return o.idx||o.id==='PA';}).forEach(function(o,i){
+        fly(o.cx,NY,o.cx,TMID,T+i*Math.max(10,160/N),W*.4);
+      });
+      nodes.forEach(function(o,i){fly(o.cx,TMID,o.cx,NY,T+W*.45+i*Math.max(10,160/N),W*.4);});
+      say('<b>Publish once.</b> Every node puts what it saw on the wire and every node hears it, all at the same '+
+          'moment. '+n1+' messages, none of them addressed to anybody.'+
+          (dyn?' The loading values rode along in the same dataset.':''),T);
+      clock(L,T+W*.85); T+=W*1.3;
+
+      if(dyn){
+        at(T,function(){showCap(true);});
+        say('<b>Capacity check, already done.</b> Each node published its loading with its status, timestamped and '+
+            'quality flagged. Nobody has to go and fetch anything, so the check costs a few milliseconds of '+
+            'arithmetic and no messages at all.',T);
+        clock(L+EVAL,T+W*.4); T+=W*1.1;
+      }
+
+      at(T,function(){
+        sub(up,'OPEN','var(--orange)');box(up,'var(--orange)');
+        sub(dn,'OPEN','var(--orange)');box(dn,'var(--orange)');
+      });
+      say('<b>Decide locally.</b> '+by[up].label+' saw it and '+by[dn].label+' did not, so the fault lies between '+
+          'them. Both open their own switch together. Nobody issued a command.',T);
+      clock(L+10+SW,T+W*.45); T+=W*1.3;
+
+      at(T,function(){restoreLeft();restoreRight();});
+      say('<b>Restore, both ends at once.</b> Primary A recloses to pick up everything above the fault, and the '+
+          'open point closes so Primary B back-feeds everything below it. Only the faulted section stays out.',T);
+      clock(L+10+SW*2,T+W*.45); T+=W*1.3;
+    }
+
+    function restoreLeft(){
+      sub('PA','reclosed','var(--ok)');box('PA','var(--ok)');
+      for(var i=0;i<k;i++) seg(nodes[i].id+'-'+nodes[i+1].id,'var(--ok)');
+      for(var j=1;j<k;j++){sub('R'+j,'supplied from A','var(--ok)');box('R'+j,'var(--ok)');}
+      sub(up,'OPEN','var(--orange)');box(up,'var(--orange)');
+    }
+    function restoreRight(){
+      by['NOP'].rect.setAttribute('stroke-dasharray','0');
+      sub('NOP','CLOSED','var(--ok)');box('NOP','var(--ok)');
+      sub('PB','feeding both ways','var(--ok)');box('PB','var(--ok)');
+      for(var i=k+1;i<=m;i++) seg(nodes[i].id+'-'+nodes[i+1].id,'var(--ok)');
+      for(var j=k+2;j<=m;j++){sub('R'+j,'supplied from B','var(--ok)');box('R'+j,'var(--ok)');}
+      sub(dn,'OPEN','var(--orange)');box(dn,'var(--orange)');
+    }
+
+    at(T,function(){
+      nodes.forEach(function(o){if(o.dSub){
+        o.dSub.textContent=is104?'no help from the scheme':'held in, inhibit received';
+        o.dSub.setAttribute('fill',is104?'var(--body)':'var(--ok)');}});
+    });
+    T+=W*.6;
+
+    at(T,function(){
+      running=false;$('run').disabled=false;
+      var total=is104?(L+n1*TX+GUARD+(dyn?2*(L+n1*TX)+EVAL:0)+4*(4*L+SW)):(L+10+EVAL+SW*2);
+      var n=is104?(n1+16+(dyn?2*n1:0)):n1;
+      $('mT').textContent=fmt(total);$('mM').textContent=n;
+      var name=M.n.toLowerCase();
+      if(!M.ok){
+        st.innerHTML='<b>'+fmt(total)+' over '+name+'.</b> And that is the only option, because R-GOOSE has no '+
+          'multicast here to run on at all. NB-IoT was built for readings you collect a few times a day. The '+
+          'number above still flatters it, since power saving leaves devices asleep when you need them most.';
+      } else if(is104){
+        st.innerHTML='<b>'+fmt(total)+' over '+name+'.</b> '+n+' messages, four round trips the switches had to '+
+          'wait on, and all '+n1+' devices had to answer before the master would move at all.'+
+          (dyn?' Two of those passes existed only to ask what everyone was carrying.':'');
+      } else {
+        st.innerHTML='<b>'+fmt(total)+' over '+name+'.</b> '+n+' messages, no round trips, both isolating switches '+
+          'moving together. Most of that number is switch travel. '+
+          (dyn?'The capacity check added nothing to the wire, because the numbers were already in the publication.'
+              :'Change the transport and watch how little it shifts.');
+      }
+    });
+  }
+
+  $('run').addEventListener('click',run);
+  function setProto(p){if(running)return;
+    if(p==='goose'&&MEDIA[media].pp===false)return;
+    proto=p;
+    $('p104').setAttribute('aria-pressed',String(p==='iec104'));
+    $('pgo').setAttribute('aria-pressed',String(p==='goose'));reset();}
+  $('p104').addEventListener('click',function(){setProto('iec104');});
+  $('pgo').addEventListener('click',function(){setProto('goose');});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-m]'),function(b){
+    b.addEventListener('click',function(){
+      if(running)return;media=b.getAttribute('data-m');
+      Array.prototype.forEach.call(document.querySelectorAll('[data-m]'),function(o){
+        o.setAttribute('aria-pressed',String(o===b));});
+      reset();});
+  });
+  function setScheme(s){if(running)return;scheme=s;
+    $('sst').setAttribute('aria-pressed',String(s==='static'));
+    $('sdy').setAttribute('aria-pressed',String(s==='dynamic'));reset();}
+  $('sst').addEventListener('click',function(){setScheme('static');});
+  $('sdy').addEventListener('click',function(){setScheme('dynamic');});
+  $('nr').addEventListener('input',function(){
+    if(running){$('nr').value=N;return;}
+    N=parseInt($('nr').value,10);$('nrv').textContent=N+' RMUs';buildRing();});
+
+  buildRing();
+})();
+</script>
+</body>
+</html>
