@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<!--
+  Yudit Kristianto — engineering tools
+  Copyright (c) 2026 Yudit Kristianto. All rights reserved.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="author" content="Yudit Kristianto">
+<meta name="description" content="Simulation tools for electrical distribution automation and FLISR, across various protocols and media.">
+<link rel="canonical" href="https://yuditkristianto.github.io/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="yuditkristianto">
+<meta property="og:url" content="https://yuditkristianto.github.io/">
+<meta property="og:title" content="Yudit Kristianto — Engineering Geek">
+<meta property="og:description" content="Simulation tools for electrical distribution automation and FLISR, across various protocols and media.">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Yudit Kristianto — Engineering Geek">
+<meta name="twitter:description" content="Simulation tools for electrical distribution automation and FLISR, across various protocols and media.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23061520'/%3E%3Cline x1='3' y1='16' x2='13' y2='16' stroke='%231CC5C5' stroke-width='2.4'/%3E%3Cline x1='19' y1='16' x2='29' y2='16' stroke='%231CC5C5' stroke-width='2.4'/%3E%3Cline x1='13' y1='11' x2='19' y2='21' stroke='%23F5A623' stroke-width='2.4'/%3E%3C/svg%3E">
+<title>Yudit Kristianto — Engineering Geek</title>
+<style>
+  :root{
+    --ink:#061520; --panel:#0B2233; --raise:#0E2C48; --rule:#1D4360;
+    --signal:#1CC5C5; --alert:#F5A623; --text:#E7F1F8; --muted:#8CA8BD;
+    --faint:#41607A;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--ink); color:var(--text); font-family:var(--sans);
+    line-height:1.6; font-size:16px;
+    background-image:radial-gradient(900px 480px at 18% -8%, rgba(28,197,197,.09), transparent 62%);
+    background-repeat:no-repeat;
+  }
+  .page{max-width:940px;margin:0 auto;padding:0 28px}
+
+  /* ---- masthead ---- */
+  header{padding:84px 0 0}
+  h1{
+    margin:0; font-size:clamp(34px,6.2vw,58px); font-weight:650;
+    letter-spacing:-.024em; line-height:1.04;
+  }
+  .role{
+    margin:14px 0 0; color:var(--muted); font-size:clamp(15px,2vw,17.5px);
+    max-width:46ch;
+  }
+  .feeder{display:block;width:100%;height:34px;margin:38px 0 0;overflow:visible}
+  .lede{
+    margin:34px 0 0; max-width:54ch; font-size:clamp(17px,2.3vw,20px);
+    line-height:1.58; color:var(--text);
+  }
+
+  /* ---- sections ---- */
+  section{padding:74px 0 0}
+  .divider{display:block;width:100%;height:9px;margin-bottom:26px;overflow:visible}
+  h2{
+    margin:0 0 4px; font-size:14.5px; font-weight:650; letter-spacing:.005em;
+    color:var(--signal);
+  }
+  .count{font-family:var(--mono);font-size:12.5px;color:var(--faint);margin:0 0 26px}
+
+  /* ---- tools ---- */
+  .tool{
+    display:block; position:relative; text-decoration:none; color:inherit;
+    background:var(--panel); border:1px solid var(--rule); border-radius:12px;
+    padding:28px 30px 26px; margin-bottom:18px;
+    transition:border-color .22s ease, background .22s ease, transform .22s ease;
+  }
+  .tool:hover,.tool:focus-visible{
+    border-color:var(--signal); background:var(--raise); transform:translateY(-2px);
+  }
+  .tool:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+  .tool h3{
+    margin:0; font-size:clamp(19px,2.6vw,23px); font-weight:620; letter-spacing:-.012em;
+  }
+  .tool p{margin:12px 0 0;color:var(--muted);max-width:62ch;font-size:15.5px}
+  .live{
+    position:absolute; top:28px; right:30px; display:inline-flex; align-items:center;
+    gap:7px; font-family:var(--mono); font-size:11.5px; color:var(--signal);
+  }
+  .live i{
+    width:7px;height:7px;border-radius:50%;background:var(--signal);
+    box-shadow:0 0 0 3px rgba(28,197,197,.16);
+  }
+  .stack{
+    margin:20px 0 0; padding:0; list-style:none; display:flex; flex-wrap:wrap; gap:7px;
+  }
+  .stack li{
+    font-family:var(--mono); font-size:11.5px; color:var(--muted);
+    border:1px solid var(--rule); border-radius:5px; padding:3px 9px;
+  }
+  .open{
+    margin:22px 0 0; font-size:15px; font-weight:600; color:var(--alert);
+  }
+  .tool:hover .open{text-decoration:underline;text-underline-offset:4px}
+
+  .next{
+    border:1px dashed var(--rule); border-radius:12px; padding:26px 30px;
+    color:var(--muted); font-size:15px; max-width:100%;
+  }
+  .next b{color:var(--text);font-weight:600}
+  .next a{color:var(--signal)}
+
+  /* ---- about ---- */
+  .about p{margin:0 0 15px;max-width:58ch;color:var(--muted)}
+  .about p:first-of-type{color:var(--text)}
+  .creds{
+    margin:22px 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:10px 22px;
+    font-family:var(--mono);font-size:12.5px;color:var(--faint);
+  }
+
+  footer{
+    margin-top:78px;padding:26px 0 56px;border-top:1px solid var(--rule);
+    font-size:12.5px;color:var(--faint);
+  }
+  footer p{margin:0 0 6px;max-width:62ch}
+  footer .stamp{font-family:var(--mono)}
+
+  @media (max-width:560px){
+    .page{padding:0 20px} header{padding-top:56px}
+    .live{position:static;margin-bottom:14px}
+    .tool{padding:24px 22px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>Yudit Kristianto</h1>
+    <p class="role">Protection, automation and control engineering for electrical distribution networks.</p>
+
+    <svg class="feeder" viewBox="0 0 900 34" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="17" x2="392" y2="17" stroke="#1CC5C5" stroke-width="2"/>
+      <line x1="408" y1="17" x2="900" y2="17" stroke="#1CC5C5" stroke-width="2"/>
+      <line x1="392" y1="9" x2="408" y2="25" stroke="#F5A623" stroke-width="2"/>
+      <g fill="#061520" stroke="#1CC5C5" stroke-width="2">
+        <circle cx="96" cy="17" r="5"/><circle cx="230" cy="17" r="5"/>
+        <circle cx="560" cy="17" r="5"/><circle cx="712" cy="17" r="5"/>
+        <circle cx="840" cy="17" r="5"/>
+      </g>
+      <circle id="pulse" cx="0" cy="17" r="4" fill="#F5A623" opacity="0"/>
+    </svg>
+
+    <p class="lede">Simulation tools for distribution automation and self-healing networks,
+      across a range of protocols and communication media. Built to be argued with.</p>
+  </header>
+
+  <section>
+    <svg class="divider" viewBox="0 0 900 9" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="4.5" x2="900" y2="4.5" stroke="#1D4360" stroke-width="1.5"/>
+      <circle cx="4" cy="4.5" r="3.5" fill="#061520" stroke="#1D4360" stroke-width="1.5"/>
+    </svg>
+    <h2>Tools</h2>
+    <p class="count">1 published</p>
+
+    <a class="tool" href="tools/flisr-rgoose-5g/">
+      <span class="live"><i></i>live</span>
+      <h3>FLISR over R-GOOSE and private 5G</h3>
+      <p>What happens on a medium voltage ring when a cable faults, and how differently it
+        plays out depending on whether the devices report to a master or talk to each other.
+        Five transport media, two protocols, and a ring you can stretch from four units
+        to sixteen.</p>
+      <ul class="stack">
+        <li>IEC 61850 R-GOOSE</li>
+        <li>IEC 60870-5-104</li>
+        <li>DNP3</li>
+        <li>Private 5G</li>
+        <li>Self-healing</li>
+      </ul>
+      <p class="open">Open the simulator</p>
+    </a>
+
+    <div class="next">
+      <b>More on the way.</b> If there is something in distribution protection or automation
+      you have always wanted to see move rather than read about, I am interested to hear it.
+      Find me on <a href="https://www.linkedin.com/in/REPLACE-WITH-YOUR-PROFILE/">LinkedIn</a>.
+    </div>
+  </section>
+
+  <section class="about">
+    <svg class="divider" viewBox="0 0 900 9" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="0" y1="4.5" x2="900" y2="4.5" stroke="#1D4360" stroke-width="1.5"/>
+      <circle cx="4" cy="4.5" r="3.5" fill="#061520" stroke="#1D4360" stroke-width="1.5"/>
+    </svg>
+    <h2>About</h2>
+
+    <p>I work on distribution automation, control and telecoms. Most of what I do sits in the
+      gap between the protection engineers and the network engineers, which turns out to be
+      where a surprising number of interesting problems live.</p>
+    <p>These tools exist because some ideas are hard to argue about in prose. It is easier to
+      change one variable and watch what happens to the clock. Everything here is built from
+      public standards and published field results, with the sources stated on each page.</p>
+    <p>Engineering geek, on the evidence.</p>
+
+    <ul class="creds">
+      <li>CAP</li>
+      <li>MIET</li>
+      <li>ISA Senior Member</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>&#169; 2026 Yudit Kristianto. All rights reserved. Reuse, adaptation, redistribution,
+      modification, or incorporation of this work or any part of it into other material is
+      permitted only with the prior written permission of the author.</p>
+    <p class="stamp">Last updated September 2026</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  // one deliberate moment on load: energise the feeder
+  var p=document.getElementById('pulse');
+  if(!p||window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var t0=null, DUR=1500;
+  function frame(now){
+    if(t0===null)t0=now;
+    var k=Math.min(1,(now-t0)/DUR);
+    var e=1-Math.pow(1-k,3);
+    p.setAttribute('cx',900*e);
+    p.setAttribute('opacity',k<.08?k/.08:(k>.9?(1-k)/.1:.85));
+    if(k<1)requestAnimationFrame(frame);else p.setAttribute('opacity',0);
+  }
+  setTimeout(function(){requestAnimationFrame(frame);},420);
+})();
+</script>
+</body>
+</html>
